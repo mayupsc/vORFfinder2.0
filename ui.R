@@ -8,7 +8,7 @@ library(shinymaterial)
 library(shinyjs)
 library(Biostrings)
 library(DECIPHER)
-
+library(shinycssloaders)
 
 jsCode <- 
   "shinyjs.select_material_sidenav_tab = function(tab_id){
@@ -40,7 +40,7 @@ material_page(
   ##-- Enabling rintrojs
   #introjsUI(),
   ##-- Global CSS
-  shiny::includeCSS("www/styles_global.css"),
+  shiny::includeCSS("www/css/styles_global.css"),
   ##-- Github button
   #HTML("<script async defer src='https://buttons.github.io/buttons.js'>"),
   ##-- Sidebar
