@@ -1,14 +1,9 @@
-library(Gviz)
-library(ggplot2)
-library(ggtree)
-library(tidytree)
-library(treeio)
-library(shiny)
-library(shinymaterial)
-library(shinyjs)
-library(Biostrings)
-library(DECIPHER)
-library(shinycssloaders)
+suppressPackageStartupMessages(library(shiny))
+suppressPackageStartupMessages(library(shinymaterial))
+suppressPackageStartupMessages(library(shinyjs))
+suppressPackageStartupMessages(library(shinycssloaders))
+
+options(shiny.sanitize.errors = FALSE)
 
 jsCode <- 
   "shinyjs.select_material_sidenav_tab = function(tab_id){
@@ -22,6 +17,10 @@ $('#' + tab_id).trigger('shown');
 $('#' + tab_id + '_tab_id').addClass('active');
 $('#side_nav_tabs_click_info').trigger('click');
 }"
+
+
+## init.sh 
+system("bash /srv/shiny-server/script/init.sh")
 
 
 material_page(
@@ -184,6 +183,7 @@ material_page(
       material_column(
         offset = 1,
         width = 9,
+        downloadButton("downloadTSV","DownloadTSV"),
         withSpinner(
           DT::dataTableOutput("orf_table"),
           type = 5,
@@ -261,11 +261,11 @@ material_page(
         shiny::tags$body(
           h4("Method"),
           p("The platform was constructed by shiny(Chang, Cheng, Allaire, Xie, & McPherson, 2020),a R package that used to building interactive web apps. 
-             Phylogenetic trees embedded in our platform were calculated by phylip(Baum, 1989) and visualized by ggtree (Yu, Smith, Zhu, Guan, & Lam, 2017). 
-             NCBI ORFfinder(https://www.ncbi.nlm.nih.gov/orffinder/) was used to identify orfs for each virus while NCBI blast(Altschul, Gish, Miller, Myers, & Lipman, 1990) was used to search similar orfs.",strong("bold"),'text.'),
+             Phylogenetic trees embedded in our platform were calculated by DECIPHER(Wright, 2020) and visualized by ggtree (Yu, Smith, Zhu, Guan, & Lam, 2017).
+             NCBI ORFfinder(https://www.ncbi.nlm.nih.gov/orffinder/) was used to identify orfs for each virus while NCBI blast(Altschul, Gish, Miller, Myers, & Lipman, 1990) was used to search similar orfs."),
           shiny::tags$h5("Reference"),
           p("Altschul, S. F., Gish, W., Miller, W., Myers, E. W., & Lipman, D. J. (1990). Basic local alignment search tool. Journal of Molecular Biology, 215(3), 403–410. https://doi.org/10.1016/S0022-2836(05)80360-2"),
-          p("Baum, B. R. (1989). PHYLIP: Phylogeny Inference Package. Version 3.2. Joel Felsenstein . The Quarterly Review of Biology, 64(4), 539–541. https://doi.org/10.1086/416571"),
+          p("Wright, E. S. (2020). RNAcontest: Comparing tools for noncoding RNA multiple sequence alignment based on structural consistency. Rna, 26(5), 531–540. https://doi.org/10.1261/rna.073015.119"),
           p("Chang, W., Cheng, J., Allaire, J., Xie, Y., & McPherson, J. (2020). Package ‘ shiny ’: Web Application Framework for R, 238."),
           p("Yu, G., Smith, D. K., Zhu, H., Guan, Y., & Lam, T. T. Y. (2017). Ggtree: an R Package for Visualization and Annotation of Phylogenetic Trees With Their Covariates and Other Associated Data. Methods in Ecology and Evolution, 8(1), 28–36. https://doi.org/10.1111/2041-210X.12628")
                       
@@ -286,3 +286,4 @@ material_page(
       div(includeHTML("www/html/footer.html"))
   )
 )
+
