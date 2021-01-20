@@ -1,11 +1,18 @@
+library(Gviz)
+library(ggplot2)
+library(ggtree)
+library(tidytree)
+library(treeio)
+library(Biostrings)
+library(DECIPHER)
+
 server <- function(input, output, session) {
   shinyjs::runjs("$('#dataset_user').parent().removeClass('btn-default').addClass('btn-danger');")
   
   ##-- upload data
   data_user <- eventReactive(input$dataset_user, {
-    
+    print(input$dataset_user)
     input_file <- input$dataset_user$name
-    
     if(is.null(input_file)) {
       return(NULL)
     } else {
@@ -134,7 +141,7 @@ server <- function(input, output, session) {
     cat(paste0('start codon is:',input$start_codon,'\n'))
     cat(paste0('genetic code is:',input$genetic_code,'\n'))
     cat(paste0('ignore nest is:',input$ignore_nest,'\n'))
-    cmd <- paste('bash script/calc.sh',input_file,input$orf_len,input$start_codon,input$genetic_code,input$ignore_nest,sep = " ")
+    cmd <- paste('bash script/calc.sh',input$dataset_user$datapath,input$orf_len,input$start_codon,input$genetic_code,input$ignore_nest,sep = " ")
 
     
     run_log <- gsub('.*/','',system(cmd,intern=T))
@@ -174,8 +181,6 @@ server <- function(input, output, session) {
 
     phylip_tree_file <- 'database/constree'
     tree <- read.newick(phylip_tree_file)
-    ID_convert <- read.table('database/ID_convert.txt',header = T,sep = "\t",stringsAsFactors = F)
-    tree$tip.label <- ID_convert$seq.name[match(ID_convert$ID,tree$tip.label)]
     #req(input$upload_tree, tree())
 
     tree_argv <- tagList(
@@ -293,8 +298,6 @@ server <- function(input, output, session) {
     
     phylip_tree_file <- 'database/constree'
     tree <- read.newick(phylip_tree_file)
-    ID_convert <- read.table('database/ID_convert.txt',header = T,sep = "\t",stringsAsFactors = F)
-    tree$tip.label <- ID_convert$seq.name[match(ID_convert$ID,tree$tip.label)]
 
     # getting the subtree phylo or treedata object
     sub_tree <- tree_subset(tree, node = input$select_node, levels_back = length(tree$tip.label))
@@ -347,11 +350,12 @@ server <- function(input, output, session) {
 
     orf_seq <- read.table(paste0('ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
     DT::datatable(
-      cbind(' ' = '&oplus;', orf_seq), escape = -0, extensions = "Buttons",
+      cbind(' ' = '&oplus;', orf_seq), 
+      escape = -0, 
+      #extensions = "Buttons",
       options = list(
         pageLength = 10,
         dom = 'Bfrtip',
-        buttons = c('copy', 'csv', 'excel', 'pdf'),
         columnDefs = list(
           list(visible = FALSE, targets = c(3)),
           list(orderable = FALSE, className = 'details-control', targets = 1)
@@ -391,10 +395,6 @@ server <- function(input, output, session) {
     
     phylip_tree_file <- 'database/constree'
     tree <- read.newick(phylip_tree_file)
-    ID_convert <- read.table('database/ID_convert.txt',header = T,sep = "\t",stringsAsFactors = F)
-    tree$tip.label <- ID_convert$seq.name[match(ID_convert$ID,tree$tip.label)]
-    
-    
     df <- data.frame('virus'=tree$tip.label,'group'='None',stringsAsFactors = F)
     df$group[df$virus %in% hit_virus] <- 'hit.virus'
     df$group[df$virus %in% query_virus] <- 'self'
@@ -433,6 +433,15 @@ server <- function(input, output, session) {
     
     return(includeHTML(paste0("blastp/",input$select_virus_orf,".html")))
   })
+
+ ##-- add download button since DT failed to download full results
+   output$downloadTSV <- downloadHandler(
+    filename = function(){
+      paste0(input$select_node,".orf.viewer.txt")
+      },
+    content = function(con){
+      file.copy(paste0('ORF/',input$select_node,".orfviewer.txt"),con)
+    }
+  )
   
 }
-
