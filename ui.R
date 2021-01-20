@@ -61,7 +61,7 @@ material_page(
     ),
     br(),
     shiny::tags$a(
-      href = "https://github.com/mayupsc/virus_orf_finder",
+      href = "https://github.com/mayupsc/vorffinder2.1/",
       shiny::tags$i(
         class = "fa fa-github", style = 'font-size:30px; color: black; display: list-item; padding-left: 10px; position: fixed; bottom: 70px;'
       )
@@ -286,4 +286,3 @@ material_page(
       div(includeHTML("www/html/footer.html"))
   )
 )
-
