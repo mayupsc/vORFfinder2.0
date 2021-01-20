@@ -6,6 +6,8 @@ library(treeio)
 library(Biostrings)
 library(DECIPHER)
 
+taskID=system("echo $(date \"+%Y%m%d%H%M%S\")",intern = T)
+
 server <- function(input, output, session) {
   shinyjs::runjs("$('#dataset_user').parent().removeClass('btn-default').addClass('btn-danger');")
   
@@ -141,7 +143,7 @@ server <- function(input, output, session) {
     cat(paste0('start codon is:',input$start_codon,'\n'))
     cat(paste0('genetic code is:',input$genetic_code,'\n'))
     cat(paste0('ignore nest is:',input$ignore_nest,'\n'))
-    cmd <- paste('bash script/calc.sh',input$dataset_user$datapath,input$orf_len,input$start_codon,input$genetic_code,input$ignore_nest,sep = " ")
+    cmd <- paste('bash script/calc.sh',taskID,input$dataset_user$datapath,input$orf_len,input$start_codon,input$genetic_code,input$ignore_nest,sep = " ")
 
     
     run_log <- gsub('.*/','',system(cmd,intern=T))
@@ -179,7 +181,7 @@ server <- function(input, output, session) {
 
   output$select_node_render <- renderUI({
 
-    phylip_tree_file <- 'database/constree'
+    phylip_tree_file <- paste0(taskID,'/database/constree')
     tree <- read.newick(phylip_tree_file)
     #req(input$upload_tree, tree())
 
@@ -236,7 +238,7 @@ server <- function(input, output, session) {
   output$select_virus_orf_render <- renderUI({
 
     req(input$select_node)
-    orf_seq <- read.table(paste0('ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)[,1:8]
+    orf_seq <- read.table(paste0(taskID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)[,1:8]
     #orf_seq <- read.table('ORF/AF206674.1.orfviewer.txt',sep = "\t",stringsAsFactors = F,header = T)
     orf_ID <- unique(gsub(':.[0-9]*:.[0-9]*','',orf_seq$seq.name))
     
@@ -296,7 +298,7 @@ server <- function(input, output, session) {
         input$subtree_text_size,
         input$subtree_plot_height)
     
-    phylip_tree_file <- 'database/constree'
+    phylip_tree_file <- paste0(taskID,'/database/constree')
     tree <- read.newick(phylip_tree_file)
 
     # getting the subtree phylo or treedata object
@@ -325,9 +327,9 @@ server <- function(input, output, session) {
   output$orf_viewer <- renderPlot({
     
     req(input$select_node)
-    orf_seq <- read.table(paste0('ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
+    orf_seq <- read.table(paste0(taskID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
     #orf_seq <- read.table(paste0('ORF/AF206674.1.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
-    virus_length <- read.table("database/virus_length.txt",sep = "\t",stringsAsFactors = F,header = T)
+    virus_length <- read.table(paste0(taskID,"/database/virus_length.txt"),sep = "\t",stringsAsFactors = F,header = T)
     usr_species_length <- virus_length$length[virus_length$virus==input$select_node]
     axisTrack <- GenomeAxisTrack(range = IRanges(start=1, end = usr_species_length, names="virus genome"))
     aTrack <- AnnotationTrack(start = orf_seq$start2,width = orf_seq$width, chromosome = "chrX", strand = orf_seq$strand,
@@ -348,7 +350,7 @@ server <- function(input, output, session) {
 
   output$orf_table <- DT::renderDataTable({
 
-    orf_seq <- read.table(paste0('ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
+    orf_seq <- read.table(paste0(taskID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
     DT::datatable(
       cbind(' ' = '&oplus;', orf_seq), 
       escape = -0, 
@@ -386,14 +388,14 @@ server <- function(input, output, session) {
     
     #req(input$select_virus_orf,input$orfTree_width_multiply,input$orfTree_text_size,input$orfTree_plot_height)
     
-    blast <- read.table(paste0("blastp/",input$select_virus_orf,".blastp"),sep = "\t",stringsAsFactors = F,header = T)
+    blast <- read.table(paste0(taskID,"/blastp/",input$select_virus_orf,".blastp"),sep = "\t",stringsAsFactors = F,header = T)
     #blast <- read.table("blastp/",sep = "\t",stringsAsFactors = F,header = T)
     colnames(blast) <- c('queryID','subjectID','identity','Alignment_length','mismatch','gap_opens','q.start','q.end','s.start','s.end','evalue','bit_score')
     
     query_virus <- unique(gsub('ORF.[0-9]*_','',gsub(':.[0-9]*:.[0-9]*','',blast$queryID)))
     hit_virus <- unique(gsub('ORF.[0-9]*_','',gsub(':.[0-9]*:.[0-9]*','',blast$subjectID)))
     
-    phylip_tree_file <- 'database/constree'
+    phylip_tree_file <- paste0(taskID,'/database/constree')
     tree <- read.newick(phylip_tree_file)
     df <- data.frame('virus'=tree$tip.label,'group'='None',stringsAsFactors = F)
     df$group[df$virus %in% hit_virus] <- 'hit.virus'
@@ -424,14 +426,14 @@ server <- function(input, output, session) {
   
   output$orf_msa <- renderUI({
     
-    protein_seq_msa_file <- paste0('blastp/',input$select_virus_orf,'.msa.fa')
+    protein_seq_msa_file <- paste0(taskID,'/blastp/',input$select_virus_orf,'.msa.fa')
     html_file <- gsub('.msa.fa','.html',protein_seq_msa_file)
     protein_sequences <- readAAStringSet(protein_seq_msa_file, format="fasta")
     
     patterns = c("-", alphabet(protein_sequences))
     BrowseSeqs(protein_sequences, colorPatterns=T,colors = rainbow(length(patterns)),htmlFile = html_file,openURL = F)
     
-    return(includeHTML(paste0("blastp/",input$select_virus_orf,".html")))
+    return(includeHTML(paste0(taskID,"/blastp/",input$select_virus_orf,".html")))
   })
 
  ##-- add download button since DT failed to download full results
@@ -440,7 +442,7 @@ server <- function(input, output, session) {
       paste0(input$select_node,".orf.viewer.txt")
       },
     content = function(con){
-      file.copy(paste0('ORF/',input$select_node,".orfviewer.txt"),con)
+      file.copy(paste0(taskID,'/ORF/',input$select_node,".orfviewer.txt"),con)
     }
   )
   
