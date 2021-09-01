@@ -22,7 +22,7 @@ orf_seq$start2[orf_seq$strand=="-"] <- orf_seq$end[orf_seq$strand=="-"]
 
 
 ## hits number
-blast <- read.table(paste0(taskID,"/blastp/",usr_species,".blast"),sep = ",",stringsAsFactors = F)
+blast <- read.table(paste0(taskID,"/blastp/",usr_species,".blastp"),sep = ",",stringsAsFactors = F)
 colnames(blast) <- c('queryID','subjectID','identity','Alignment_length','mismatch','gap_opens','q.start','q.end','s.start','s.end','evalue','bit_score')
 
 blast_hits_number <- aggregate(blast$subjectID,by=list(blast$queryID),length)

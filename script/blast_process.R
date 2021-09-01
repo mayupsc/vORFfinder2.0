@@ -19,8 +19,7 @@ blast_result_split <- split(blast_result,blast_result$queryID)
 for (i in 1:length(blast_result_split)) {
   
   blast_result_i <- blast_result_split[[i]]
-  blast_result_i_seq <- unique(data.frame('seq.name'=c(blast_result_i$queryID,blast_result_i$subjectID),'seq.text'=c(blast_result_i$querySeq,blast_result_i$subjectSeq)))
+  blast_result_i <- blast_result_i[order(blast_result_i$evalue,decreasing = F),]
   ORF_name <- gsub(':.*','',unique(blast_result_i$queryID))
-  dat2fasta(blast_result_i_seq,outfile = paste0(taskID,'/blastp/',ORF_name,'.fa'))
   write.table(blast_result_i,paste0(taskID,'/blastp/',ORF_name,'.blastp'),quote = F,row.names = F,col.names = T,sep = "\t")
 }

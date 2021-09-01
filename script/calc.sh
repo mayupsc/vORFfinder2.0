@@ -1,3 +1,4 @@
+
 ##-- 1. receive user input file and parameters
 taskID=$1
 file=$2
@@ -6,6 +7,7 @@ start_codon=$4
 genetic_code=$5
 ignore_nest=$6
 
+rm -r $taskID/blastp $taskID/database $taskID/ORF $taskID/log
 mkdir -p  $taskID/blastp $taskID/database $taskID/ORF $taskID/log
 chmod 777 $taskID/blastp $taskID/database $taskID/ORF $taskID/log
 
@@ -29,7 +31,7 @@ for id in $(ls $taskID/database/virus_seq/*fasta); do ID=`echo $id|sed 's/.*\\//
 cat $taskID/database/virus_seq/*fasta > $taskID/database/virus_db.fasta
 Rscript script/virus_length.R $taskID/database/virus_db.fasta $taskID/database/virus_length.txt
 
-/opt/conda/bin/mafft --quiet $taskID/database/virus_db.fasta > $taskID/database/virus_msa.fasta
+/opt/conda/bin/mafft $taskID/database/virus_db.fasta > $taskID/database/virus_msa.fasta
 
 ##-- 3. construct phylogenetic tree : DECIPHER
 Rscript script/phyloTree_DECIPHER.R $taskID/database/virus_msa.fasta $taskID/database/constree> $taskID/log/step3_phyloTree_DECIPHER.log 
@@ -44,11 +46,14 @@ sed -i 's/ unnamed protein product.*//g' $taskID/ORF/*.orfs
 cat $taskID/ORF/*.orfs > $taskID/database/orf_db.fasta
 /opt/conda/bin/makeblastdb -in $taskID/database/orf_db.fasta -parse_seqids -dbtype prot >> $taskID/log/step4_make_orf_db.log
 ##-- 5. blastp
-for id in $(ls $taskID/ORF/*orfs); do { sample=`echo ${id}|sed 's/.*\///g'|sed 's/.orfs//g'`; /opt/conda/bin/blastp -query $id -db $taskID/database/orf_db.fasta -outfmt 10 -evalue 0.05 > $taskID/blastp/${sample}.blast ; }& done ; wait
-for id in $(ls $taskID/blastp/*blast); do { Rscript script/blast_process.R $id $taskID >> $taskID/log/step5_blastp.log ; }& done ; wait
-for id in $(ls $taskID/blastp/*fa); do { /opt/conda/bin/mafft --quiet $id > ${id%%.fa}.msa.fa; }& done; wait
+for id in $(ls $taskID/ORF/*orfs); do { sample=`echo ${id}|sed 's/.*\///g'|sed 's/.orfs//g'`; /opt/conda/bin/blastp -query $id -db $taskID/database/orf_db.fasta -outfmt 15 -evalue 0.05 > $taskID/blastp/${sample}.blast ; }& done ; wait
+for id in $(ls $taskID/ORF/*orfs); do { sample=`echo ${id}|sed 's/.*\///g'|sed 's/.orfs//g'`; /opt/conda/bin/blastp -query $id -db $taskID/database/orf_db.fasta -outfmt 10 -evalue 0.05 > $taskID/blastp/${sample}.blastp ; }& done ; wait
+for id in $(ls $taskID/blastp/*blast); do { Rscript script/blast_process2.R $id $taskID >> $taskID/log/step5_blastp.log ; }& done ; wait
+for id in $(ls $taskID/blastp/*blastp);do { Rscript script/blast_process.R  $id $taskID >> $taskID/log/step5_blastp.log ; }& done ; wait
+#for id in $(ls $taskID/blastp/*fa); do { /opt/conda/bin/clustalw -INFILE=$id -OUTPUT=FASTA >> $taskID/log/step5_clustalw.log; }& done; wait
 #for id in $(ls blastp/*msa.fa); do Rscript script/msa_html.R $id>> log/step5_blastp.log ; done
 
 ## files for orf viewer
 for id in $(ls $taskID/ORF/*orfs); do { Rscript script/orf_process.R $id $taskID>> $taskID/log/step6_orfviewer.log; }& done
+
 
