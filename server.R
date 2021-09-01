@@ -1,15 +1,58 @@
-library(Gviz)
-library(ggplot2)
-library(ggtree)
-library(tidytree)
-library(treeio)
-library(Biostrings)
-library(DECIPHER)
-
-taskID=system("echo $(date \"+%Y%m%d%H%M%S\")",intern = T)
-
 server <- function(input, output, session) {
   shinyjs::runjs("$('#dataset_user').parent().removeClass('btn-default').addClass('btn-danger');")
+  
+  ##-- create taskID
+  task_id <- eventReactive(input$taskID,{
+    
+    task_ID <- input$taskID
+    
+    if(is.null(task_ID)) {
+      sendSweetAlert(
+        width = "1000px",
+        session = session,
+        title = "Error...",
+        text = "Sorry, taskID cannot be NULL",
+        type = "error"
+      )
+      task_ID <- NULL
+    }else{
+      
+      if (" " %in% strsplit(task_ID,"")[[1]]){
+        sendSweetAlert(
+          width = "1000px",
+          session = session,
+          title = "Error...",
+          text = "Sorry, space is not allowed in TaskID",
+          type = "error"
+        )
+        task_ID <- NULL
+      }else{
+        if (file.exists(task_ID)){
+          sendSweetAlert(
+            width = "1000px",
+            session = session,
+            title = "Error...",
+            text = "Sorry, your taskID is occupied.",
+            type = "error"
+          )
+          task_ID <- NULL
+        }
+        
+      }
+      
+    }
+    return(task_ID)
+  })
+  
+  observe({
+    task_ID <- task_id()
+    print(task_ID)
+    if(!is.null(task_ID)) {
+      shinyjs::enable(id = "task_ID")
+    }
+  })
+  
+  
   
   ##-- upload data
   data_user <- eventReactive(input$dataset_user, {
@@ -35,6 +78,16 @@ server <- function(input, output, session) {
     return(input_file)
   })
   
+  
+  observe({
+    argv <- data_user()
+    if(!is.null(argv)) {
+      shinyjs::enable(id = "upload")
+    }
+  })
+  
+  
+  
   ##-- orf arguments
   
   output$select_orf_render <- renderUI({
@@ -53,11 +106,11 @@ server <- function(input, output, session) {
             label = " ", 
             value = 50,
             color = "#9fa8da"
-            )
-          ),
+          )
+        ),
         br(),
-          
-          ##-- ORF start codon
+        
+        ##-- ORF start codon
         material_row(
           HTML("<h6 style='color:#009688;'> II.start codon</p>"),
           br(),
@@ -71,13 +124,13 @@ server <- function(input, output, session) {
             ),
             #color = "#9fa8da",
             selected = "0"
-
+            
           )
         ),
-          
-          ##-- Genetic Code
-      material_row(
-        HTML("<h6 style='color:#009688;'> III.Genetic Code</p>"),
+        
+        ##-- Genetic Code
+        material_row(
+          HTML("<h6 style='color:#009688;'> III.Genetic Code</p>"),
           br(),
           material_dropdown(
             input_id = "genetic_code",
@@ -112,10 +165,10 @@ server <- function(input, output, session) {
             color = "#9fa8da"
           )
         ),
-          br(),
-          ##-- Nested ORF
-          material_row(
-            material_checkbox(input_id = "ignore_nest", 
+        br(),
+        ##-- Nested ORF
+        material_row(
+          material_checkbox(input_id = "ignore_nest", 
                             label = shiny::tags$a("IV.Ignore nested ORFs",strong('bold')), 
                             initial_value = FALSE, 
                             color = "#9fa8da")
@@ -123,28 +176,23 @@ server <- function(input, output, session) {
       )
     )
     return(orf_argv)
-
+    
   })
   
-
-  observe({
-    argv <- data_user()
-    if(!is.null(argv)) {
-      shinyjs::enable(id = "upload")
-    }
-  })
-
+  
+  
   
   runCalc <- eventReactive(input$upload, {
-  
+    
+    task_ID <- task_id()
     input_file <- data_user()
     cat(paste0('input file is:',input_file,'\n'))
     cat(paste0('orf length is:',input$orf_len,'\n'))
     cat(paste0('start codon is:',input$start_codon,'\n'))
     cat(paste0('genetic code is:',input$genetic_code,'\n'))
     cat(paste0('ignore nest is:',input$ignore_nest,'\n'))
-    cmd <- paste('bash script/calc.sh',taskID,input$dataset_user$datapath,input$orf_len,input$start_codon,input$genetic_code,input$ignore_nest,sep = " ")
-
+    cmd <- paste('bash script/calc.sh',task_ID,input$dataset_user$datapath,input$orf_len,input$start_codon,input$genetic_code,input$ignore_nest,sep = " ")
+    
     
     run_log <- gsub('.*/','',system(cmd,intern=T))
     #run_log2 <- paste0(system(cmd,intern=T),collapse = "\n")
@@ -178,13 +226,13 @@ server <- function(input, output, session) {
     session$sendCustomMessage(type = "shinymaterialJS", shinyjs::js$select_material_sidenav_tab("blast"))
   })
   
-
+  
   output$select_node_render <- renderUI({
-
-    phylip_tree_file <- paste0(taskID,'/database/constree')
+    task_ID <- task_id()
+    phylip_tree_file <- paste0(task_ID,'/database/constree')
     tree <- read.newick(phylip_tree_file)
     #req(input$upload_tree, tree())
-
+    
     tree_argv <- tagList(
       material_column(
         material_row(
@@ -236,9 +284,10 @@ server <- function(input, output, session) {
   
   
   output$select_virus_orf_render <- renderUI({
-
+    
     req(input$select_node)
-    orf_seq <- read.table(paste0(taskID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)[,1:8]
+    task_ID <- task_id()
+    orf_seq <- read.table(paste0(task_ID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)[,1:8]
     #orf_seq <- read.table('ORF/AF206674.1.orfviewer.txt',sep = "\t",stringsAsFactors = F,header = T)
     orf_ID <- unique(gsub(':.[0-9]*:.[0-9]*','',orf_seq$seq.name))
     
@@ -289,68 +338,68 @@ server <- function(input, output, session) {
     return(virus_orf_argv)
   })
   
-
-
+  
+  
   output$subtree <- renderPlot({
-
+    task_ID <- task_id()
     req(input$select_node,
         input$subtree_width_multiply,
         input$subtree_text_size,
         input$subtree_plot_height)
     
-    phylip_tree_file <- paste0(taskID,'/database/constree')
+    phylip_tree_file <- paste0(task_ID,'/database/constree')
     tree <- read.newick(phylip_tree_file)
-
+    
     # getting the subtree phylo or treedata object
     sub_tree <- tree_subset(tree, node = input$select_node, levels_back = length(tree$tip.label))
-
+    
     # creating the plot
-     p <- ggtree(sub_tree ,aes(color = group))+
+    p <- ggtree(sub_tree ,aes(color = group))+
       geom_tiplab(size = input$subtree_text_size,align = T) +
       #theme_tree2() +
       scale_color_manual(values = c(`1` = "#009688", `0` = "black"))+
       theme(
         legend.position = 'none'
       )
-
+    
     p + lims(x = c(0, max(p$data$x) * input$subtree_width_multiply))
   })
-
+  
   # creating the ui element for the subtree
   output$subtree_render <- renderUI({
-
+    
     plotOutput("subtree", height = input$subtree_plot_height)
   })
   
   
   
   output$orf_viewer <- renderPlot({
-    
+    task_ID <- task_id() 
     req(input$select_node)
-    orf_seq <- read.table(paste0(taskID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
+    orf_seq <- read.table(paste0(task_ID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
     #orf_seq <- read.table(paste0('ORF/AF206674.1.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
-    virus_length <- read.table(paste0(taskID,"/database/virus_length.txt"),sep = "\t",stringsAsFactors = F,header = T)
+    virus_length <- read.table(paste0(task_ID,"/database/virus_length.txt"),sep = "\t",stringsAsFactors = F,header = T)
     usr_species_length <- virus_length$length[virus_length$virus==input$select_node]
     axisTrack <- GenomeAxisTrack(range = IRanges(start=1, end = usr_species_length, names="virus genome"))
     aTrack <- AnnotationTrack(start = orf_seq$start2,width = orf_seq$width, chromosome = "chrX", strand = orf_seq$strand,
                               id = orf_seq$symbol, name = "ORF Viewer", transcriptAnnotation = "symbol")
-
+    
     p <- plotTracks(list(axisTrack, aTrack), from = 1, to = usr_species_length, showId = FALSE,
-               fontcolor = "black", add53 = TRUE, add35 = TRUE, cex = 1,
-               labelPos = "above", cex.id = 1.2, col.id = "black",
-               #panel.only=TRUE,
-               fill.range="#b0bec5",
-               col="#b0bec5",
-               fill="#80cbc4",
-               main = input$select_node, featureAnnotation = "id", fontcolor.feature = "black")
+                    fontcolor = "black", add53 = TRUE, add35 = TRUE, cex = 1,
+                    labelPos = "above", cex.id = 0.8, col.id = "black",
+                    #panel.only=TRUE,
+                    fill.range="#b0bec5",
+                    col="#b0bec5",
+                    fill="#80cbc4",
+                    main = input$select_node, featureAnnotation = "id", fontcolor.feature = "black")
     ### ORF positions
-
+    
   })
-
-
+  
+  
   output$orf_table <- DT::renderDataTable({
-
-    orf_seq <- read.table(paste0(taskID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
+    task_ID <- task_id()
+    orf_seq <- read.table(paste0(task_ID,'/ORF/',input$select_node,'.orfviewer.txt'),sep = "\t",stringsAsFactors = F,header = T)
     DT::datatable(
       cbind(' ' = '&oplus;', orf_seq), 
       escape = -0, 
@@ -364,38 +413,38 @@ server <- function(input, output, session) {
         )
       ),
       callback = DT::JS("
-                    table.column(1).nodes().to$().css({cursor: 'pointer'});
-                    var format = function(d) {
-                    return '<div style=\"background-color:#eee; padding: .5em;\"> orf_sequence ' +
-                    d[3]   + '</div>';
-                    };
-                    table.on('click', 'td.details-control', function() {
-                    var td = $(this), row = table.row(td.closest('tr'));
-                    if (row.child.isShown()) {
-                    row.child.hide();
-                    td.html('&oplus;');
-                    } else {
-                    row.child(format(row.data())).show();
-                    td.html('&CircleMinus;');
-                    }
-                    });")
+                        table.column(1).nodes().to$().css({cursor: 'pointer'});
+                        var format = function(d) {
+                        return '<div style=\"background-color:#eee; padding: .5em;\"> orf_sequence ' +
+                        d[3]   + '</div>';
+                        };
+                        table.on('click', 'td.details-control', function() {
+                        var td = $(this), row = table.row(td.closest('tr'));
+                        if (row.child.isShown()) {
+                        row.child.hide();
+                        td.html('&oplus;');
+                        } else {
+                        row.child(format(row.data())).show();
+                        td.html('&CircleMinus;');
+                        }
+                        });")
         )
-    })
+  })
   
   ##-- display orf-hit phyloTree
   
   output$orf_phylo <- renderPlot({
-    
+    task_ID <- task_id() 
     #req(input$select_virus_orf,input$orfTree_width_multiply,input$orfTree_text_size,input$orfTree_plot_height)
     
-    blast <- read.table(paste0(taskID,"/blastp/",input$select_virus_orf,".blastp"),sep = "\t",stringsAsFactors = F,header = T)
+    blast <- read.table(paste0(task_ID,"/blastp/",input$select_virus_orf,".blastp"),sep = "\t",stringsAsFactors = F,header = T)
     #blast <- read.table("blastp/",sep = "\t",stringsAsFactors = F,header = T)
     colnames(blast) <- c('queryID','subjectID','identity','Alignment_length','mismatch','gap_opens','q.start','q.end','s.start','s.end','evalue','bit_score')
     
     query_virus <- unique(gsub('ORF.[0-9]*_','',gsub(':.[0-9]*:.[0-9]*','',blast$queryID)))
     hit_virus <- unique(gsub('ORF.[0-9]*_','',gsub(':.[0-9]*:.[0-9]*','',blast$subjectID)))
     
-    phylip_tree_file <- paste0(taskID,'/database/constree')
+    phylip_tree_file <- paste0(task_ID,'/database/constree')
     tree <- read.newick(phylip_tree_file)
     df <- data.frame('virus'=tree$tip.label,'group'='None',stringsAsFactors = F)
     df$group[df$virus %in% hit_virus] <- 'hit.virus'
@@ -411,7 +460,7 @@ server <- function(input, output, session) {
             legend.title = element_blank(),
             legend.text = element_text(size = (input$orfTree_text_size+10),face = 'bold')
             #text = element_text(size = input$orfTree_text_size)
-            )+ 
+      )+ 
       lims(x = c(0, max(p_tree$data$x) * input$orfTree_width_multiply))
     
   })
@@ -425,25 +474,26 @@ server <- function(input, output, session) {
   ##-- display orf blastp results  
   
   output$orf_msa <- renderUI({
-    
-    protein_seq_msa_file <- paste0(taskID,'/blastp/',input$select_virus_orf,'.msa.fa')
-    html_file <- gsub('.msa.fa','.html',protein_seq_msa_file)
-    protein_sequences <- readAAStringSet(protein_seq_msa_file, format="fasta")
-    
-    patterns = c("-", alphabet(protein_sequences))
-    BrowseSeqs(protein_sequences, colorPatterns=T,colors = rainbow(length(patterns)),htmlFile = html_file,openURL = F)
-    
-    return(includeHTML(paste0(taskID,"/blastp/",input$select_virus_orf,".html")))
-  })
+    task_ID <- task_id() 
+    protein_seq_fa_file  <- paste0(task_ID,'/blastp/',input$select_virus_orf,'.fa')
+    html_file <- gsub('.fa','.html',protein_seq_fa_file)
 
- ##-- add download button since DT failed to download full results
-   output$downloadTSV <- downloadHandler(
+    protein_sequences <- readAAStringSet(protein_seq_fa_file, format="fasta")
+    
+    colors <- c("#B3DE69","#C1D567","#D0CD66","#DFC464","#EEBC63","#FDB462","#E3B378","#CBB28F","#B2B2A5","#99B1BC","#80B1D3","#98A7BF","#B19DAC","#C99398","#E28985","#FB8072","#EE8B86","#E2979B","#D6A2B0","#CAAEC5","#BEBADA","#CBC7D2","#D8D5CA","#E5E3C2","#F2F1BA","#FEFEB3","#E8F6B7","#D1EDBB","#BAE4BF","#A3DBC3","#8DD3C7")
+    BrowseSeqs(protein_sequences, colorPatterns=T,colors = colors,htmlFile = html_file,openURL = F) 
+    return(includeHTML(paste0(task_ID,"/blastp/",input$select_virus_orf,".html")))
+  })
+  
+  ##-- add download button since DT failed to download full results
+  output$downloadTSV <- downloadHandler(
     filename = function(){
       paste0(input$select_node,".orf.viewer.txt")
-      },
+    },
     content = function(con){
-      file.copy(paste0(taskID,'/ORF/',input$select_node,".orfviewer.txt"),con)
+      file.copy(paste0(input$taskID,'/ORF/',input$select_node,".orfviewer.txt"),con)
     }
   )
   
-}
+  }
+

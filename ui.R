@@ -2,6 +2,14 @@ suppressPackageStartupMessages(library(shiny))
 suppressPackageStartupMessages(library(shinymaterial))
 suppressPackageStartupMessages(library(shinyjs))
 suppressPackageStartupMessages(library(shinycssloaders))
+suppressPackageStartupMessages(library(shinyWidgets))
+suppressPackageStartupMessages(library(Gviz))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggtree))
+suppressPackageStartupMessages(library(tidytree))
+suppressPackageStartupMessages(library(treeio))
+suppressPackageStartupMessages(library(Biostrings))
+suppressPackageStartupMessages(library(DECIPHER))
 
 options(shiny.sanitize.errors = FALSE)
 
@@ -17,10 +25,6 @@ $('#' + tab_id).trigger('shown');
 $('#' + tab_id + '_tab_id').addClass('active');
 $('#side_nav_tabs_click_info').trigger('click');
 }"
-
-
-## init.sh 
-system("bash /srv/shiny-server/script/init.sh")
 
 
 material_page(
@@ -80,8 +84,7 @@ material_page(
         offset = 2,
         width = 9,
         shiny::tags$img(src = "img/workflow.jpg", height="100%", width="100%", align="top")
-        
-   )
+        )
       )
   ),
 
@@ -92,7 +95,28 @@ material_page(
     br(),
     shiny::tags$h1("data upload & ORFfinder parameters settings"),
     br(),
-
+    
+    #### taskID
+    material_row(
+      material_column(
+        width = 5,
+        offset = 3,
+        material_row(
+          HTML("<h6 style='color:#009688;'> Name your Task (Only letters,numbers,underlines are allowed) :</p>"),
+          material_text_box(
+            input_id = "taskID",
+            value = "",
+            label = " ",
+            color = "#9fa8da"
+            ),
+          shinyjs::disabled(material_button(input_id = "task_ID", label = "Next", icon = "play_arrow", color = "#26a69a"))
+          )
+        )
+      ),
+    
+    #### Upload
+    conditionalPanel(condition = "input.task_ID",
+      
       material_row(
         material_column(
           width = 5,
@@ -116,7 +140,6 @@ material_page(
           width = 6,
           offset = 3,
 
-
           conditionalPanel(condition = "input.upload",
                            br(),
                            material_card(
@@ -136,7 +159,8 @@ material_page(
                              )
                            )
         )
-    ),
+    )
+  ),
 
   ##-- orf_database ----
 
@@ -286,3 +310,4 @@ material_page(
       div(includeHTML("www/html/footer.html"))
   )
 )
+
